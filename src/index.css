@@ -1,0 +1,174 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-sans: 'Barlow', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-display: 'Barlow', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    font-weight: 400; /* Body text: Barlow Regular / 400 */
+    color: #1e293b;
+    background-color: #f8fafc;
+    overflow-x: hidden;
+    letter-spacing: -0.01em;
+  }
+
+  /* Main headings & Large hero headings: Barlow Bold / 700 */
+  h1, .hero-heading, .heading-main, .font-heading-main {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  /* Section headings: Barlow SemiBold / 600 */
+  h2, h3, h4, .heading-section, .font-heading-section {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+  }
+
+  .font-display {
+    font-family: var(--font-display);
+  }
+
+  /* Navigation menu: Barlow Medium / 500 */
+  nav a, nav button, .nav-item, .nav-link {
+    font-family: var(--font-sans);
+    font-weight: 500;
+  }
+
+  /* Labels and small text: Barlow Medium / 500 */
+  label, .text-label, .small-text, .text-caption {
+    font-family: var(--font-sans);
+    font-weight: 500;
+  }
+
+  /* Statistics, numbers, and key figures: Barlow Bold / 700 */
+  .stat-figure, .stat-number, .key-number {
+    font-family: var(--font-sans);
+    font-weight: 700;
+  }
+
+  .font-mono {
+    font-family: var(--font-mono);
+  }
+}
+
+/* Custom Stylish Industrial Buttons (Barlow SemiBold / 600) */
+.btn-industrial-primary {
+  font-family: var(--font-sans);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background-color: #0f172a;
+  color: #ffffff;
+  font-weight: 600; /* Buttons: Barlow SemiBold / 600 */
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.375rem;
+  border: 1px solid #1e293b;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: all 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-industrial-primary:hover {
+  background-color: #1e293b;
+  border-color: #f59e0b;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15), 0 0 0 1px #f59e0b;
+  transform: translateY(-1px);
+}
+
+.btn-industrial-primary:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.btn-industrial-accent {
+  font-family: var(--font-sans);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%);
+  color: #0f172a;
+  font-weight: 600; /* Buttons: Barlow SemiBold / 600 */
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.375rem;
+  border: 1px solid #b45309;
+  box-shadow: 0 2px 4px rgba(217, 119, 6, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transition: all 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-industrial-accent:hover {
+  background: linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-industrial-accent:active {
+  transform: translateY(0);
+}
+
+.btn-industrial-outline {
+  font-family: var(--font-sans);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background-color: #ffffff;
+  color: #1e293b;
+  font-weight: 600; /* Buttons: Barlow SemiBold / 600 */
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.375rem;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: all 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-industrial-outline:hover {
+  background-color: #f8fafc;
+  border-color: #0f172a;
+  color: #0f172a;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+.btn-industrial-outline:active {
+  transform: translateY(0);
+}
+
+.btn-industrial-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  background-color: transparent;
+  color: #475569;
+  font-weight: 500;
+  font-size: 0.875rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  transition: all 150ms ease;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-industrial-ghost:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
