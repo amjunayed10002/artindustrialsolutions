@@ -34,6 +34,16 @@ import {
   initialSocialLinks,
   initialAdminUsers
 } from './initialData';
+import {
+  fetchAdminSession,
+  fetchSiteData,
+  initializeSiteData,
+  loginAdmin as apiLoginAdmin,
+  logoutAdmin as apiLogoutAdmin,
+  saveSiteData,
+  submitContactMessage,
+  submitRFQ,
+} from './api';
 
 const STORAGE_KEY = 'art_industrial_db_v1';
 const AUTH_KEY = 'art_admin_session';
@@ -80,10 +90,40 @@ class DatabaseStore {
   private state: DatabaseState;
   private listeners: Set<() => void> = new Set();
   private currentAdmin: AdminUser | null = null;
+  private remoteReady = false;
+  private saveQueue: Promise<void> = Promise.resolve();
 
   constructor() {
     this.state = this.loadState();
-    this.currentAdmin = this.loadSession();
+  }
+
+  public async initialize(): Promise<void> {
+    try {
+      const [remote, admin] = await Promise.all([fetchSiteData(), fetchAdminSession()]);
+      this.currentAdmin = admin;
+      this.remoteReady = true;
+      if (remote.initialized && remote.data) {
+        this.applyRemoteState(remote.data);
+      }
+      this.notify();
+    } catch {
+      this.remoteReady = false;
+    }
+  }
+
+  private applyRemoteState(data: Record<string, unknown>): void {
+    const parsed = data as Partial<DatabaseState>;
+    this.state = {
+      ...getDefaultState(),
+      ...parsed,
+      settings: { ...initialSiteSettings, ...(parsed.settings || {}) },
+      about: { ...initialAboutSection, ...(parsed.about || {}) },
+    };
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+    } catch {
+      // The remote database remains the source of truth.
+    }
   }
 
   private loadState(): DatabaseState {
@@ -106,22 +146,29 @@ class DatabaseStore {
   }
 
   private saveState(): void {
+    const snapshot = this.getPersistableState();
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
     } catch {
       // Storage limits or private mode
+    }
+    if (this.currentAdmin && this.remoteReady) {
+      this.saveQueue = this.saveQueue
+        .then(() => saveSiteData(snapshot as unknown as Record<string, unknown>))
+        .catch((error: unknown) => {
+          console.error('Could not save site data to MySQL:', error);
+        });
     }
     this.notify();
   }
 
-  private loadSession(): AdminUser | null {
-    try {
-      const saved = localStorage.getItem(AUTH_KEY);
-      if (saved) return JSON.parse(saved);
-    } catch {
-      // ignore
-    }
-    return null;
+  private getPersistableState(): DatabaseState {
+    const snapshot = JSON.parse(JSON.stringify(this.state)) as DatabaseState;
+    snapshot.adminUsers = snapshot.adminUsers.map((user) => {
+      const { password: _password, ...safeUser } = user;
+      return safeUser;
+    });
+    return snapshot;
   }
 
   public subscribe(listener: () => void): () => void {
@@ -138,34 +185,38 @@ class DatabaseStore {
     return this.currentAdmin;
   }
 
-  public loginAdmin(username: string, password: string): { success: boolean; error?: string; user?: AdminUser } {
-    // Admin login validation (supports 'admin' / 'admin123', 'content' / 'content123', 'sales' / 'sales123')
-    const user = this.state.adminUsers.find(
-      (u) => u.username.toLowerCase() === username.trim().toLowerCase() || u.email.toLowerCase() === username.trim().toLowerCase()
-    );
-
-    if (!user) {
-      return { success: false, error: 'User not found with provided credentials.' };
-    }
-
-    if (password === 'admin123' || password === 'password' || password === 'art2026') {
-      const loggedUser = {
-        ...user,
-        last_login: new Date().toISOString().replace('T', ' ').substring(0, 16),
-      };
-      this.currentAdmin = loggedUser;
-      localStorage.setItem(AUTH_KEY, JSON.stringify(loggedUser));
+  public async loginAdmin(username: string, password: string): Promise<{ success: boolean; error?: string; user?: AdminUser }> {
+    try {
+      const user = await apiLoginAdmin(username, password);
+      this.currentAdmin = user;
+      localStorage.removeItem(AUTH_KEY);
+      const remote = await fetchSiteData();
+      if (remote.initialized && remote.data) {
+        this.applyRemoteState(remote.data);
+      } else {
+        const seeded = await initializeSiteData(this.getPersistableState() as unknown as Record<string, unknown>);
+        if (seeded.data) this.applyRemoteState(seeded.data);
+      }
+      this.remoteReady = true;
       this.notify();
-      return { success: true, user: loggedUser };
+      return { success: true, user };
+    } catch (error) {
+      this.currentAdmin = null;
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Authentication failed.',
+      };
     }
-
-    return { success: false, error: 'Invalid password. (Default is admin123)' };
   }
 
-  public logoutAdmin(): void {
-    this.currentAdmin = null;
-    localStorage.removeItem(AUTH_KEY);
-    this.notify();
+  public async logoutAdmin(): Promise<void> {
+    try {
+      await apiLogoutAdmin();
+    } finally {
+      this.currentAdmin = null;
+      localStorage.removeItem(AUTH_KEY);
+      this.notify();
+    }
   }
 
   // --- Getters ---
@@ -275,7 +326,10 @@ class DatabaseStore {
   }
 
   public getAdminUsers(): AdminUser[] {
-    return [...this.state.adminUsers];
+    return this.state.adminUsers.map((user) => {
+      const { password: _password, ...safeUser } = user;
+      return safeUser;
+    });
   }
 
   // --- CRUD Modifiers ---
@@ -464,21 +518,10 @@ class DatabaseStore {
   }
 
   // RFQ
-  public addRFQ(rfqData: Omit<RFQ, 'id' | 'reference_no' | 'created_at' | 'status'>): RFQ {
-    const newId = this.state.rfqs.length ? Math.max(...this.state.rfqs.map((r) => r.id)) + 1 : 1;
-    const year = new Date().getFullYear();
-    const ref = `RFQ-${year}-${String(100 + newId).padStart(4, '0')}`;
-    const dateStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
-
-    const newRFQ: RFQ = {
-      ...rfqData,
-      id: newId,
-      reference_no: ref,
-      status: 'New',
-      created_at: dateStr,
-    };
+  public async addRFQ(rfqData: Omit<RFQ, 'id' | 'reference_no' | 'created_at' | 'status'>): Promise<RFQ> {
+    const newRFQ = await submitRFQ(rfqData);
     this.state.rfqs.unshift(newRFQ);
-    this.saveState();
+    this.notify();
     return newRFQ;
   }
 
@@ -495,18 +538,10 @@ class DatabaseStore {
   }
 
   // Contact Messages
-  public addContactMessage(data: Omit<ContactMessage, 'id' | 'is_read' | 'created_at'>): ContactMessage {
-    const newId = this.state.contactMessages.length ? Math.max(...this.state.contactMessages.map((m) => m.id)) + 1 : 1;
-    const dateStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
-
-    const newMsg: ContactMessage = {
-      ...data,
-      id: newId,
-      is_read: false,
-      created_at: dateStr,
-    };
+  public async addContactMessage(data: Omit<ContactMessage, 'id' | 'is_read' | 'created_at'>): Promise<ContactMessage> {
+    const newMsg = await submitContactMessage(data);
     this.state.contactMessages.unshift(newMsg);
-    this.saveState();
+    this.notify();
     return newMsg;
   }
 
@@ -575,7 +610,7 @@ class DatabaseStore {
   }
 
   public exportJSON(): string {
-    return JSON.stringify(this.state, null, 2);
+    return JSON.stringify(this.getPersistableState(), null, 2);
   }
 
   public importJSON(jsonStr: string): boolean {

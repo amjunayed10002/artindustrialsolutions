@@ -48,14 +48,13 @@ export const ContactPage: React.FC<ContactPageProps> = ({ navigate }) => {
     return Object.keys(errs).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
 
     setIsSubmitting(true);
-    setTimeout(() => {
-      // Save directly into database via dbStore
-      store.addContactMessage({
+    try {
+      await store.addContactMessage({
         name: formData.name.trim(),
         company: formData.company.trim(),
         email: formData.email.trim(),
@@ -75,7 +74,10 @@ export const ContactPage: React.FC<ContactPageProps> = ({ navigate }) => {
         message: '',
       });
       setErrors({});
-    }, 400);
+    } catch {
+      setIsSubmitting(false);
+      alert('Your message could not be submitted. Please check the connection and try again.');
+    }
   };
 
   return (

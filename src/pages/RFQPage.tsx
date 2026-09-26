@@ -83,18 +83,18 @@ export const RFQPage: React.FC<RFQPageProps> = ({
     return Object.keys(errs).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
 
     setIsSubmitting(true);
-    setTimeout(() => {
+    try {
       const prodId = formData.product_id ? Number(formData.product_id) : null;
       const productName = selectedProductObj 
         ? `${selectedProductObj.name} [SKU: ${selectedProductObj.sku}]`
         : formData.custom_product_name.trim();
 
-      const newRfq = store.addRFQ({
+      const newRfq = await store.addRFQ({
         customer_name: formData.customer_name.trim(),
         company_name: formData.company_name.trim(),
         email: formData.email.trim(),
@@ -114,7 +114,10 @@ export const RFQPage: React.FC<RFQPageProps> = ({
         name: newRfq.customer_name,
       });
       window.scrollTo({ top: 120, behavior: 'smooth' });
-    }, 450);
+    } catch {
+      setIsSubmitting(false);
+      alert('The RFQ could not be submitted. Please check the connection and try again.');
+    }
   };
 
   return (

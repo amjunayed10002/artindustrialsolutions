@@ -45,6 +45,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [, setTick] = useState(0);
 
   useEffect(() => {
+    void dbStore.initialize();
     const unsubscribe = dbStore.subscribe(() => {
       setTick((t) => t + 1);
     });

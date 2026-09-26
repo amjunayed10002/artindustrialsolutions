@@ -17,20 +17,18 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
 
   if (!isOpen) return null;
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
-    setTimeout(() => {
-      const res = store.loginAdmin(username, password);
-      setLoading(false);
-      if (res.success) {
-        onSuccess();
-      } else {
-        setError(res.error || 'Authentication failed. Please verify credentials.');
-      }
-    }, 300);
+    const res = await store.loginAdmin(username, password);
+    setLoading(false);
+    if (res.success) {
+      onSuccess();
+    } else {
+      setError(res.error || 'Authentication failed. Please verify credentials.');
+    }
   };
 
 
